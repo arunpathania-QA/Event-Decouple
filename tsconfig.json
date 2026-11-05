@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": [
+    "playwright.config.ts",
+    "data/**/*.ts",
+    "fixtures/**/*.ts",
+    "pages/**/*.ts",
+    "pages/event-registration.page.ts",
+    "tests/**/*.ts",
+    "utils/**/*.ts",
+    "utils/pause.ts",
+    "reporters/**/*.ts"
+  ]
+}

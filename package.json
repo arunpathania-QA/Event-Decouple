@@ -1,0 +1,24 @@
+{
+  "name": "automation-event",
+  "version": "1.0.0",
+  "description": "Playwright tests for event registration workflow automation",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:workflow": "playwright test tests/events/create-event-setup.spec.ts --workers=1",
+    "test:workflow:headed": "playwright test tests/events/create-event-setup.spec.ts --headed --workers=1",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "report:qa": "start playwright-report/qa-report.html",
+    "codegen": "playwright codegen"
+  },
+  "keywords": ["playwright", "events"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5"
+  }
+}
