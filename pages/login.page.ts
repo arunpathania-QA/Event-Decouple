@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { requireBaseUrl } from '../utils/load-env';
 import { pause } from '../utils/pause';
 
 const IDENTITY_HOST =
@@ -24,7 +25,7 @@ export class LoginPage {
   }
 
   async open() {
-    const configuredBase = process.env.BASE_URL || 'https://automation.engagifii.com/';
+    const configuredBase = requireBaseUrl();
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         // Use absolute BASE_URL so we never accidentally hit the wrong tenant.
@@ -43,7 +44,7 @@ export class LoginPage {
       throw new Error('Username and password are required for login');
     }
 
-    const configuredBase = process.env.BASE_URL || 'https://automation.engagifii.com/';
+    const configuredBase = requireBaseUrl();
     const configuredHost = new URL(configuredBase).host;
     const success = new RegExp(`^https://${configuredHost.replace(/\./g, '\\.')}/(?!auth-callback)`, 'i');
 

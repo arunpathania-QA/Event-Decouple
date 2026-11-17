@@ -276,7 +276,7 @@ test.describe.serial('Event registration lifecycle', () => {
   });
 
   test('Cancel Event Decouple Registration', async ({ appPage, cancelRegistrationPage }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(360_000);
     test.skip(!modifiedRegistration, 'Test Case 2 did not capture the modified registration');
     const handoff = modifiedRegistration!;
 

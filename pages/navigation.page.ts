@@ -12,7 +12,8 @@ export class NavigationPage {
     await this.page.locator('a').filter({ hasText: 'System Settings' }).click();
     await this.page.getByRole('link', { name: 'Manage Types' }).click();
     await this.page.locator('sd-managetype-header a').filter({ hasText: 'Accreditation' }).click();
-    await this.page.getByText('Events', { exact: true }).click();
+    // The side menu also contains "Events". The category switcher is the open menuitem.
+    await this.page.getByRole('menuitem', { name: 'Events', exact: true }).click();
     await this.page.getByRole('link', { name: 'Event Types' }).click();
   }
 
@@ -21,7 +22,8 @@ export class NavigationPage {
     // This route sometimes paints only the footer. Open it again until the grid search is there.
     for (let attempt = 1; attempt <= 3; attempt++) {
       await this.page.goto('/pages/settings/workflow-all', { waitUntil: 'domcontentloaded' });
-      if (await search.isVisible({ timeout: 15_000 }).catch(() => false)) return;
+      const ready = await search.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true).catch(() => false);
+      if (ready) return;
       console.log(`[Workflows] page shell only, reload ${attempt}/3`);
     }
     await expect(search).toBeVisible({ timeout: 20_000 });

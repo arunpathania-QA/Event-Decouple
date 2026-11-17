@@ -10,6 +10,7 @@ import { ModifyRegistrationPage } from '../pages/modify-registration.page';
 import { NavigationPage } from '../pages/navigation.page';
 import { RegistrationDetailPage } from '../pages/registration-detail.page';
 import { WorkflowsPage } from '../pages/workflows.page';
+import { requireBaseUrl } from '../utils/load-env';
 import { saveRegistrationHandoff } from '../utils/registration-handoff';
 
 type WorkerFixtures = {
@@ -44,7 +45,7 @@ export const test = base.extend<AppFixtures, WorkerFixtures>({
         deviceScaleFactor: chrome.deviceScaleFactor,
         isMobile: chrome.isMobile,
         hasTouch: chrome.hasTouch,
-        baseURL: process.env.BASE_URL || 'https://automation.engagifii.com/',
+        baseURL: requireBaseUrl(),
       });
       await use(context);
       await context.close();

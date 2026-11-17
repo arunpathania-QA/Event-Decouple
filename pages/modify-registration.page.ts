@@ -362,31 +362,69 @@ export class ModifyRegistrationPage {
   /** Billing contact is only required when the dropdown still shows Select. */
   private async selectBillingContactIfNeeded() {
     const trigger = this.billingSelect();
-    if (!(await trigger.isVisible({ timeout: 3_000 }).catch(() => false))) {
+    if (!(await this.visibleWithin(trigger, 5_000))) {
       console.log('[Modify] billing contact already selected');
       return;
     }
-    await trigger.scrollIntoViewIfNeeded();
-    const option = this.page
-      .locator('.cdk-overlay-pane')
-      .getByRole('checkbox')
-      .filter({ hasNot: this.page.locator('[disabled]') });
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+
+    // The contact list loads after the dropdown opens. Until it does, the overlay holds only the
+    // "Select All" row, which is not a contact. Wait for a real option, and reopen if none arrives.
+    const contacts = this.billingContactOptions();
+    const maxRounds = 4;
+    for (let round = 1; round <= maxRounds; round += 1) {
+      await trigger.scrollIntoViewIfNeeded();
+      await this.closeBillingOverlay();
       await trigger.click({ force: true });
-      if (await option.first().isVisible({ timeout: 5_000 }).catch(() => false)) break;
+
+      if (!(await this.visibleWithin(contacts, 15_000))) {
+        console.log(`[Modify] billing contact list empty, pause and reopen ${round}/${maxRounds}`);
+        await this.closeBillingOverlay();
+        await pause(2_000);
+        continue;
+      }
+
+      const preferred = this.page.getByRole('checkbox', { name: /Craig ServiceBus Craig|Aaman/i });
+      const box = (await this.visibleWithin(preferred, 2_000)) ? preferred.first() : contacts.last();
+      await expect(box).toBeVisible({ timeout: 10_000 });
+      if (!(await box.isChecked().catch(() => false))) {
+        await box.check({ force: true });
+      }
+      await expect(box).toBeChecked({ timeout: 5_000 });
+      await this.closeBillingOverlay();
+
+      if (await trigger.waitFor({ state: 'hidden', timeout: 10_000 }).then(() => true).catch(() => false)) {
+        console.log('[Modify] billing contact selected');
+        return;
+      }
+      console.log(`[Modify] billing contact still shows Select, retrying ${round}/${maxRounds}`);
+      await pause(1_000);
     }
-    const preferred = this.page.getByRole('checkbox', { name: /Craig ServiceBus Craig|Aaman/i });
-    const box = (await preferred.first().isVisible().catch(() => false)) ? preferred.first() : option.last();
-    await expect(box).toBeVisible({ timeout: 10_000 });
-    if (!(await box.isChecked().catch(() => false))) {
-      await box.check({ force: true });
-    }
+    throw new Error('The billing contact list never offered a contact, or the selection did not apply.');
+  }
+
+  /** Contact checkboxes in the open dropdown, excluding the "Select All" row. */
+  private billingContactOptions() {
+    return this.page.locator(
+      'xpath=//div[contains(@class,"cdk-overlay-pane")]//input[@type="checkbox"]' +
+        '[not(ancestor::div[contains(@class,"all-select")])][not(@disabled)]',
+    );
+  }
+
+  private async closeBillingOverlay() {
+    const pane = this.page.locator('.cdk-overlay-pane').first();
+    if (!(await pane.isVisible().catch(() => false))) return;
     await this.page.locator('.cdk-overlay-backdrop').last().click({ force: true }).catch(async () => {
       await this.page.keyboard.press('Escape');
     });
-    await pause(500);
-    await expect(trigger).toBeHidden({ timeout: 10_000 });
-    console.log('[Modify] billing contact selected');
+    await pane.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => undefined);
+  }
+
+  private async visibleWithin(locator: Locator, timeout: number) {
+    return locator
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
   }
 
   private async acceptCertification() {

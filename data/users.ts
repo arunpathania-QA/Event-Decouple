@@ -3,7 +3,7 @@ export function getAdminUser() {
   const password = process.env.LOGIN_PASSWORD?.trim() ?? '';
 
   if (!username || !password) {
-    throw new Error('LOGIN_USERNAME and LOGIN_PASSWORD must be set in .env');
+    throw new Error('LOGIN_USERNAME and LOGIN_PASSWORD must be set');
   }
 
   return { username, password };

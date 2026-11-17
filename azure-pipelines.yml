@@ -1,0 +1,85 @@
+trigger:
+  branches:
+    include:
+      - master
+
+parameters:
+  - name: ENV
+    displayName: Select Environment
+    type: string
+    default: support
+    values:
+      - support
+      - qa
+      - hotfix
+      - prod
+
+variables:
+  - group: Engagifii-${{ parameters.ENV }}
+  - name: TEST_ENV
+    value: ${{ parameters.ENV }}
+  # YAML values override the variable group, so the dropdown URL is the one Playwright receives.
+  - ${{ if eq(parameters.ENV, 'support') }}:
+    - name: BASE_URL
+      value: https://automation.engagifii-support.com/
+  - ${{ if eq(parameters.ENV, 'qa') }}:
+    - name: BASE_URL
+      value: https://automation.engagifii-qa.com/
+  - ${{ if eq(parameters.ENV, 'hotfix') }}:
+    - name: BASE_URL
+      value: https://automation.engagifii-hotfix.com/
+  - ${{ if eq(parameters.ENV, 'prod') }}:
+    - name: BASE_URL
+      value: https://automation.engagifii.com/
+
+jobs:
+  - job: Playwright_Tests
+    displayName: Playwright Tests - ${{ parameters.ENV }}
+    pool:
+      vmImage: ubuntu-24.04
+    timeoutInMinutes: 60
+
+    steps:
+      - checkout: self
+
+      - task: NodeTool@0
+        displayName: Setup Node.js
+        inputs:
+          versionSpec: 20.x
+
+      - script: npm ci
+        displayName: Install dependencies
+
+      - script: npx playwright install --with-deps
+        displayName: Install Playwright Browsers
+
+      - script: |
+          echo "Selected Environment: $TEST_ENV"
+          echo "Base URL: $BASE_URL"
+          echo "Starting Playwright Tests"
+          npx playwright test --workers=1
+        displayName: Run Playwright Tests
+        env:
+          NODE_ENV: test
+          TEST_ENV: $(TEST_ENV)
+          BASE_URL: $(BASE_URL)
+          LOGIN_USERNAME: $(LOGIN_USERNAME)
+          LOGIN_PASSWORD: $(LOGIN_PASSWORD)
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Playwright HTML Report
+        condition: always()
+        continueOnError: true
+        inputs:
+          targetPath: playwright-report
+          artifact: playwright-report
+          publishLocation: pipeline
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Test Results
+        condition: always()
+        continueOnError: true
+        inputs:
+          targetPath: test-results
+          artifact: test-results
+          publishLocation: pipeline

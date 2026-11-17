@@ -482,22 +482,24 @@ export class EventDetailsPage {
     await this.page.getByText(/Add Class/i).first().evaluate((el: HTMLElement) => el.click());
     await this.page.getByText('Add New Class').click();
 
-    // Course
-    await this.page
-      .locator('#courseName')
-      .filter({ hasText: /^Select\s*$/ })
-      .evaluate((el: HTMLElement) => el.click());
-    await this.selectOverlayOption(options.courseName);
+    // Course. The list can open as "No data found" while courses are still loading.
+    await this.selectOverlayOption(options.courseName, async () => {
+      await this.page
+        .locator('#courseName')
+        .filter({ hasText: /^Select\s*$/ })
+        .evaluate((el: HTMLElement) => el.click());
+    });
     await expect(this.page.locator('#courseName').filter({ hasText: /^Select\s*$/ })).toHaveCount(0, {
       timeout: 10_000,
     });
 
     // Class Type — must resolve before Save is enabled
-    await this.page
-      .locator('#courseName')
-      .filter({ hasText: /Select a Class Type/i })
-      .evaluate((el: HTMLElement) => el.click());
-    await this.selectOverlayOption(options.classTypeName);
+    await this.selectOverlayOption(options.classTypeName, async () => {
+      await this.page
+        .locator('#courseName')
+        .filter({ hasText: /Select a Class Type/i })
+        .evaluate((el: HTMLElement) => el.click());
+    });
     await expect(this.page.getByText(/Select a Class Type/i)).toHaveCount(0, { timeout: 10_000 });
 
     await this.page.locator('.cdk-overlay-backdrop').click({ force: true }).catch(() => undefined);
@@ -809,21 +811,35 @@ export class EventDetailsPage {
    * Do not type in "Type to filter..." ? filtering "sanity" returns "No data found"
    * even though the course radio is in the unfiltered list.
    */
-  private async selectOverlayOption(name: string) {
+  private async selectOverlayOption(name: string, open: () => Promise<void>) {
     // The course label is split ("Test Event" + "sanity" + "1 Credit"). The radio's
     // accessible name is still the full string, which is what the recording checks.
     const radio = this.page.getByRole('radio', { name, exact: true });
-    await expect(radio).toBeVisible({ timeout: 15_000 });
-    // Recording checks this radio. A row click on the split label "Test Event" selects the
-    // other course, and some inputs ignore a forced click until the list item is clicked.
-    try {
-      await radio.check({ force: true, timeout: 4_000 });
-    } catch {
-      await this.page.getByRole('listitem').filter({ has: radio }).click();
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await open();
+      const visible = await radio
+        .waitFor({ state: 'visible', timeout: 8_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!visible) {
+        console.log(`[Overlay option] ${name} not visible, pause and reopen ${attempt}/4`);
+        await this.closeOverlay();
+        await pause(2_000);
+        continue;
+      }
+      // Recording checks this radio. A row click on the split label "Test Event" selects the
+      // other course, and some inputs ignore a forced click until the list item is clicked.
+      try {
+        await radio.check({ force: true, timeout: 4_000 });
+      } catch {
+        await this.page.getByRole('listitem').filter({ has: radio }).click();
+      }
+      console.log('[Overlay option]', name);
+      await pause(400);
+      await this.page.keyboard.press('Escape').catch(() => undefined);
+      return;
     }
-    console.log('[Overlay option]', name);
-    await pause(400);
-    await this.page.keyboard.press('Escape').catch(() => undefined);
+    await expect(radio).toBeVisible({ timeout: 5_000 });
   }
 
   private async closeOverlay() {

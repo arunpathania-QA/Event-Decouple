@@ -153,7 +153,11 @@ export class EventRegistrationPage {
     }
 
     const financeSearch = this.page.getByRole('textbox', { name: 'Search people or organizations' });
-    if (await financeSearch.isVisible({ timeout: 8_000 }).catch(() => false)) {
+    const needsOrganization = await financeSearch
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (needsOrganization) {
       await this.selectFinanceOrganization(options.financeOrgName || 'ServiceBus Organization');
     } else {
       await expect(this.page.getByText(/^Organization$/).first()).toBeVisible({ timeout: 15_000 });

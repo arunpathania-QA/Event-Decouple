@@ -5,12 +5,16 @@ export class EventTypesPage {
 
   async exists(name: string): Promise<boolean> {
     const search = this.page.getByRole('textbox', { name: /search/i }).first();
-    if (await search.isVisible().catch(() => false)) {
+    if (await search.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true).catch(() => false)) {
       await search.fill(name);
-      await this.page.waitForTimeout(800);
     }
 
-    return this.page.getByText(name, { exact: true }).first().isVisible().catch(() => false);
+    return this.page
+      .getByText(name, { exact: true })
+      .first()
+      .waitFor({ state: 'visible', timeout: 8_000 })
+      .then(() => true)
+      .catch(() => false);
   }
 
   async addEventType(name: string) {

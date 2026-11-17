@@ -145,23 +145,46 @@ export class CancelRegistrationPage {
     await expect(confirm.getByText(/Registration for \d+ registrant\(s\) will be cancelled/i)).toBeVisible();
     await expect(confirm.getByText('Are you sure you want to continue?')).toBeVisible();
     await this.hideChatWidget();
+    // Support often takes about 90s to return this call, and the success dialog appears only after it.
+    const cancelRequest = this.page.waitForResponse(
+      (response) =>
+        response.url().includes('/registration/RegCancelParticipantsForEvent') &&
+        response.request().method() === 'POST',
+      { timeout: 180_000 },
+    );
     await confirm.getByRole('button', { name: 'Yes, Cancel Registration' }).click();
+    const cancelResponse = await cancelRequest;
+    expect(cancelResponse.ok(), `Cancellation request failed with status ${cancelResponse.status()}`).toBeTruthy();
   }
 
   async expectRegistrationCancelled(identity: RegistrationIdentity) {
-    const dialog = this.page.getByRole('dialog').filter({ hasText: 'Registration Cancelled' }).last();
-    const success = dialog.getByText('Registration Cancelled', { exact: true });
-    await expect(success).toBeVisible({ timeout: 90_000 });
+    const dialog = this.page.locator('modal-container').filter({ hasText: 'Registration Cancelled' }).last();
+    const success = dialog.locator('.modal-title', { hasText: 'Registration Cancelled' });
+    await expect(success).toBeVisible({ timeout: 120_000 });
+    await expect(dialog.getByRole('columnheader', { name: 'Credit Note' })).toBeVisible();
     const okay = dialog.getByRole('button', { name: 'Okay', exact: true });
-    await expect(okay).toBeVisible();
+    await expect(okay).toBeEnabled();
     await this.hideChatWidget();
     await okay.click();
+    // With a credit note in the summary, Okay does not dismiss this dialog. Close does.
+    if (!(await this.hiddenWithin(dialog, 5_000))) {
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+    }
     await expect(dialog).toBeHidden({ timeout: 20_000 });
 
     await expect(this.detail.header()).toContainText(identity.groupId, { timeout: 30_000 });
     const registrantList = this.page.locator('sd-registrant-list');
     await expect(registrantList.getByText('Registration Cancelled', { exact: true })).toBeVisible();
     await expect(registrantList).toContainText(identity.registrationId);
+  }
+
+  private async hiddenWithin(locator: ReturnType<Page['locator']>, timeout: number) {
+    try {
+      await locator.waitFor({ state: 'hidden', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async clickProceed() {

@@ -1,19 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { loadEnvironment, requireBaseUrl } from './utils/load-env';
 
-const envFile = path.resolve(__dirname, '.env');
-if (fs.existsSync(envFile)) {
-  for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const separator = trimmed.indexOf('=');
-    if (separator === -1) continue;
-    const key = trimmed.slice(0, separator).trim();
-    const value = trimmed.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '');
-    if (process.env[key] === undefined) process.env[key] = value;
-  }
-}
+loadEnvironment();
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -24,8 +12,8 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* The serial registration lifecycle shares one registration, so a retry would repeat it. */
+  retries: 0,
   /* Keep workers low so dependent UI workflows stay stable. */
   workers: process.env.CI ? 1 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -36,8 +24,8 @@ export default defineConfig({
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Set BASE_URL in the environment or in a .env file (see .env.example). */
-    baseURL: process.env.BASE_URL || 'https://automation.engagifii.com/',
+    /* BASE_URL comes from the selected environment. loadEnvironment() fails when it is missing. */
+    baseURL: requireBaseUrl(),
     actionTimeout: 15_000,
     navigationTimeout: 45_000,
 
